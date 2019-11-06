@@ -1,6 +1,8 @@
 import argparse
 import os
 import sys
+import concurrent.futures
+from tqdm import tqdm
 
 from build import JARVIS
 from modules.python.Assembly2Variant import GetVariants
@@ -113,7 +115,64 @@ def chromosome_level_parallelization(chr_list,
         vcf_file.write_vcf_records(resolved_candidates)
 
 
-def handle_output_directory(output_dir, thread_id):
+def single_worker(args, _start, _end):
+    chr_name, bam_file, ref_file = args
+
+    view = View(chromosome_name=chr_name,
+                bam_file_path=bam_file,
+                reference_file_path=ref_file)
+
+    n_variants, variants = view.parse_region(_start, _end)
+    region = (chr_name, _start, _end)
+
+    return n_variants, variants, region
+
+
+def chromosome_level_parallelization2(chr_list,
+                                      bam_file,
+                                      ref_file,
+                                      output_path,
+                                      total_threads,
+                                      sample_name,
+                                      max_size=100000):
+    # if there's no confident bed provided, then chop the chromosome
+    fasta_handler = JARVIS.FASTA_handler(ref_file)
+
+    for chr_name, region in chr_list:
+        if not region:
+            interval_start, interval_end = (0, fasta_handler.get_chromosome_sequence_length(chr_name) + 1)
+        else:
+            interval_start, interval_end = tuple(region)
+
+        all_intervals = []
+        for pos in range(interval_start, interval_end, max_size):
+            all_intervals.append((pos, min(interval_end, pos + max_size - 1)))
+
+        args = (chr_name, bam_file, ref_file)
+
+        total_variants = 0
+        all_variants = []
+        with concurrent.futures.ProcessPoolExecutor(max_workers=total_threads) as executor:
+            futures = [executor.submit(single_worker, args,  _start, _stop) for _start, _stop in all_intervals]
+
+            for fut in concurrent.futures.as_completed(futures):
+                if fut.exception() is None:
+                    # get the results
+                    n_variants, variants, region = fut.result()
+                    sys.stderr.write(TextColor.GREEN + "TOTAL : " + str(n_variants) + " VARIANTS FOUND IN: " + str(region) + "\n" + TextColor.END)
+                    total_variants += n_variants
+                    all_variants.extend(variants)
+                else:
+                    sys.stderr.write("ERROR: " + str(fut.exception()) + "\n")
+                fut._result = None  # python issue 27144
+
+        vcf_file = VCFWriter(bam_file, sample_name, output_path)
+        post_processor = PostProcessVariants()
+        resolved_candidates = post_processor.post_process_variants(all_variants)
+        vcf_file.write_vcf_records(resolved_candidates)
+
+
+def handle_output_directory(output_dir):
     """
     Process the output directory and return a valid directory where we save the output
     :param output_dir: Output directory path
@@ -220,12 +279,6 @@ if __name__ == '__main__':
         help="Number of maximum threads for this region."
     )
     parser.add_argument(
-        "--thread_id",
-        type=int,
-        required=False,
-        help="Reference corresponding to the BAM file."
-    )
-    parser.add_argument(
         "--sample_name",
         type=str,
         required=True,
@@ -234,13 +287,12 @@ if __name__ == '__main__':
     FLAGS, unparsed = parser.parse_known_args()
     chr_list = get_chromosme_list(FLAGS.chromosome_name)
 
-    output_dir = handle_output_directory(os.path.abspath(FLAGS.output_dir), FLAGS.thread_id)
+    output_dir = handle_output_directory(os.path.abspath(FLAGS.output_dir))
 
-    chromosome_level_parallelization(chr_list,
-                                     FLAGS.bam,
-                                     FLAGS.fasta,
-                                     output_dir,
-                                     FLAGS.threads,
-                                     FLAGS.thread_id,
-                                     FLAGS.sample_name)
+    chromosome_level_parallelization2(chr_list,
+                                      FLAGS.bam,
+                                      FLAGS.fasta,
+                                      output_dir,
+                                      FLAGS.threads,
+                                      FLAGS.sample_name)
 

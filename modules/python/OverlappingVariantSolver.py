@@ -49,7 +49,7 @@ def genotype_likelihood(variant_call, allele_indices):
     log_prob = None
     try:
         allele_indices = tuple(sorted(allele_indices))
-        p = max(1e-15, variant_call.predictions[allele_indices])
+        p = 1e-15
         log_prob = math.log10(p)
     except ValueError:
         sys.stderr.write(TextColor.RED + "ERROR: PYTHON MATH ERROR math.log10 " +
