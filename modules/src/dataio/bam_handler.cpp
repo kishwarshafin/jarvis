@@ -24,7 +24,6 @@ BAM_handler::BAM_handler(string path) {
         cerr<<"HEADER ERROR: INVALID BAM FILE. PLEASE CHECK IF PATH IS CORRECT."<<endl;
         exit (EXIT_FAILURE);
     }
-
 }
 
 set<string> BAM_handler::get_sample_names() {

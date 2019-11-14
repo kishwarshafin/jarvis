@@ -22,8 +22,9 @@ class BamHandler:
     def get_pileupcolumns_aligned_to_a_region(self, chromosome_name, start, end):
         """
         Return a AlignmentFile.pileup object given a site
-        :param contig: Contig [ex. chr3]
-        :param pos: Position [ex 100001]
+        :param chromosome_name: name of the contig [ex. chr3]
+        :param start: starting position on the contig [ex 100001]
+        :param end: ending position on the contig [ex 200000]
         :return: pysam.AlignmentFile.pileup object
         """
         # get pileup columns

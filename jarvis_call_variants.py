@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import argparse
 import os
 import sys
@@ -13,7 +14,7 @@ from modules.python.VcfWriter import VCFWriter
 
 class View:
     """
-    Process manager that runs sequence of processes to generate images and their labebls.
+    Process manager that runs sequence of processes to generate images and their labels.
     """
     def __init__(self, chromosome_name, bam_file_path, reference_file_path):
         """
@@ -55,7 +56,7 @@ class View:
 
 def create_output_dir_for_chromosome(output_dir, chr_name):
     """
-    Create an internal directory inside the output directory to dump choromosomal summary files
+    Create an internal directory inside the output directory to dump chromosomal summary files
     :param output_dir: Path to output directory
     :param chr_name: chromosome name
     :return: New directory path
@@ -154,7 +155,6 @@ def chromosome_level_parallelization2(chr_list,
         all_variants = []
         with concurrent.futures.ProcessPoolExecutor(max_workers=total_threads) as executor:
             futures = [executor.submit(single_worker, args,  _start, _stop) for _start, _stop in all_intervals]
-
             for fut in concurrent.futures.as_completed(futures):
                 if fut.exception() is None:
                     # get the results
@@ -198,7 +198,7 @@ def boolean_string(s):
     return s.lower() == 'true'
 
 
-def get_chromosme_list(chromosome_names):
+def get_chromosome_list(chromosome_names):
     split_names = chromosome_names.strip().split(',')
     split_names = [name.strip() for name in split_names]
 
@@ -285,7 +285,10 @@ if __name__ == '__main__':
         help="Prediction file."
     )
     FLAGS, unparsed = parser.parse_known_args()
-    chr_list = get_chromosme_list(FLAGS.chromosome_name)
+    chr_list = get_chromosome_list(FLAGS.chromosome_name)
+
+    # Try opening the bam file to validate
+    bam_handler = JARVIS.BAM_handler(FLAGS.bam)
 
     output_dir = handle_output_directory(os.path.abspath(FLAGS.output_dir))
 
