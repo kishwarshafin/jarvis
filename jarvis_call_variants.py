@@ -15,18 +15,21 @@ class View:
     """
     Process manager that runs sequence of processes to generate images and their labebls.
     """
-    def __init__(self, chromosome_name, bam_file_path, reference_file_path):
+    def __init__(self, chromosome_name, bam_file_path_h1, bam_file_path_h2, reference_file_path):
         """
         Initialize a manager object
         :param chromosome_name: Name of the chromosome
-        :param bam_file_path: Path to the BAM file
+        :param bam_file_path_h1: Path to the BAM file
+        :param bam_file_path_h2: Path to the BAM file
         :param reference_file_path: Path to the reference FASTA file
         """
         # --- initialize handlers ---
         # create objects to handle different files and query
-        self.bam_path = bam_file_path
+        self.bam_path_h1 = bam_file_path_h1
+        self.bam_path_h2 = bam_file_path_h2
         self.fasta_path = reference_file_path
-        self.bam_handler = JARVIS.BAM_handler(bam_file_path)
+        self.bam_handler_h1 = JARVIS.BAM_handler(bam_file_path_h1)
+        self.bam_handler_h2 = JARVIS.BAM_handler(bam_file_path_h2)
         self.fasta_handler = JARVIS.FASTA_handler(reference_file_path)
 
         # --- initialize names ---
@@ -42,7 +45,8 @@ class View:
         """
         # st_time = time.time()
         # print("STARTING: ", self.chromosome_name, start_position, end_position)
-        read_fetcher = GetVariants(self.bam_handler,
+        read_fetcher = GetVariants(self.bam_handler_h1,
+                                   self.bam_handler_h2,
                                    self.fasta_handler,
                                    self.chromosome_name,
                                    start_position,
@@ -71,55 +75,12 @@ def create_output_dir_for_chromosome(output_dir, chr_name):
     return path_to_dir
 
 
-def chromosome_level_parallelization(chr_list,
-                                     bam_file,
-                                     ref_file,
-                                     output_path,
-                                     total_threads,
-                                     thread_id,
-                                     sample_name,
-                                     max_size=1000):
-    # if there's no confident bed provided, then chop the chromosome
-    fasta_handler = JARVIS.FASTA_handler(ref_file)
-
-    for chr_name, region in chr_list:
-        if not region:
-            interval_start, interval_end = (0, fasta_handler.get_chromosome_sequence_length(chr_name) + 1)
-        else:
-            interval_start, interval_end = tuple(region)
-
-        all_intervals = []
-        for pos in range(interval_start, interval_end, max_size):
-            all_intervals.append((pos, min(interval_end, pos + max_size - 1)))
-
-        intervals = [r for i, r in enumerate(all_intervals) if i % total_threads == thread_id]
-
-        view = View(chromosome_name=chr_name,
-                    bam_file_path=bam_file,
-                    reference_file_path=ref_file)
-
-        total_candidates = 0
-        all_candidates = []
-        for count, interval in enumerate(intervals):
-            _start, _end = interval
-            n_candidates, candidates = view.parse_region(start_position=_start, end_position=_end)
-            total_candidates += n_candidates
-
-            if not candidates:
-                continue
-            all_candidates.extend(candidates)
-
-        vcf_file = VCFWriter(bam_file, sample_name, output_path)
-        post_processor = PostProcessVariants()
-        resolved_candidates = post_processor.post_process_variants(all_candidates)
-        vcf_file.write_vcf_records(resolved_candidates)
-
-
 def single_worker(args, _start, _end):
-    chr_name, bam_file, ref_file = args
+    chr_name, bam_file_h1, bam_file_h2, ref_file = args
 
     view = View(chromosome_name=chr_name,
-                bam_file_path=bam_file,
+                bam_file_path_h1=bam_file_h1,
+                bam_file_path_h2=bam_file_h2,
                 reference_file_path=ref_file)
 
     n_variants, variants = view.parse_region(_start, _end)
@@ -129,7 +90,8 @@ def single_worker(args, _start, _end):
 
 
 def chromosome_level_parallelization2(chr_list,
-                                      bam_file,
+                                      bam_file_h1,
+                                      bam_file_h2,
                                       ref_file,
                                       output_path,
                                       total_threads,
@@ -148,7 +110,7 @@ def chromosome_level_parallelization2(chr_list,
         for pos in range(interval_start, interval_end, max_size):
             all_intervals.append((pos, min(interval_end, pos + max_size - 1)))
 
-        args = (chr_name, bam_file, ref_file)
+        args = (chr_name, bam_file_h1, bam_file_h2, ref_file)
 
         total_variants = 0
         all_variants = []
@@ -166,7 +128,7 @@ def chromosome_level_parallelization2(chr_list,
                     sys.stderr.write("ERROR: " + str(fut.exception()) + "\n")
                 fut._result = None  # python issue 27144
 
-        vcf_file = VCFWriter(bam_file, sample_name, output_path)
+        vcf_file = VCFWriter(bam_file_h1, sample_name, output_path)
         post_processor = PostProcessVariants()
         resolved_candidates = post_processor.post_process_variants(all_variants)
         vcf_file.write_vcf_records(resolved_candidates)
@@ -250,7 +212,13 @@ if __name__ == '__main__':
     '''
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--bam",
+        "--bam_h1",
+        type=str,
+        required=True,
+        help="BAM file containing reads of interest."
+    )
+    parser.add_argument(
+        "--bam_h2",
         type=str,
         required=True,
         help="BAM file containing reads of interest."
@@ -290,7 +258,8 @@ if __name__ == '__main__':
     output_dir = handle_output_directory(os.path.abspath(FLAGS.output_dir))
 
     chromosome_level_parallelization2(chr_list,
-                                      FLAGS.bam,
+                                      FLAGS.bam_h1,
+                                      FLAGS.bam_h2,
                                       FLAGS.fasta,
                                       output_dir,
                                       FLAGS.threads,

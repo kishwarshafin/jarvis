@@ -18,6 +18,7 @@ class VCFWriter:
     def write_vcf_records(self, called_variants):
         for variant in called_variants:
             alleles = tuple([variant.ref]) + tuple(variant.alternate_alleles)
+            # print(variant.pos_start, variant.pos_end, alleles)
             # print(str(chrm), st_pos, end_pos, qual, rec_filter, alleles, genotype, gq)
             vcf_record = self.vcf_file.new_record(contig=str(variant.chromosome_name), start=variant.pos_start,
                                                   stop=variant.pos_end, id='.', qual=60,

@@ -20,7 +20,7 @@ CandidateFinder::CandidateFinder(string reference_sequence,
     AlleleMap.resize(region_end - region_start + 1);
 }
 
-void CandidateFinder::add_read_alleles(type_read &read, vector<int> &coverage, int read_index_in_list) {
+void CandidateFinder::add_read_alleles(type_read &read, vector<int> &coverage, int read_index_in_list, int hp) {
     int read_index = 0;
     long long ref_position = read.pos;
     int cigar_index = 0;
@@ -67,7 +67,7 @@ void CandidateFinder::add_read_alleles(type_read &read, vector<int> &coverage, i
                             }
 
                             ReadSupportMap[candidate_alt].push_back(read_index_in_list);
-                            CandidateHaplotypeSupport[candidate_alt].insert(read.hp_tag);
+                            CandidateHaplotypeSupport[candidate_alt].insert(hp);
 
                             if (AlleleMap[region_index].find(candidate_alt) == AlleleMap[region_index].end())
                                 AlleleMap[region_index].insert(candidate_alt);
@@ -108,7 +108,7 @@ void CandidateFinder::add_read_alleles(type_read &read, vector<int> &coverage, i
                     }
 
                     ReadSupportMap[candidate_alt].push_back(read_index_in_list);
-                    CandidateHaplotypeSupport[candidate_alt].insert(read.hp_tag);
+                    CandidateHaplotypeSupport[candidate_alt].insert(hp);
 
                     if (AlleleMap[region_index].find(candidate_alt) == AlleleMap[region_index].end())
                         AlleleMap[region_index].insert(candidate_alt);
@@ -144,9 +144,9 @@ void CandidateFinder::add_read_alleles(type_read &read, vector<int> &coverage, i
 
                     ReadSupportMap[candidate_alt].push_back(read_index_in_list);
 
-                    CandidateHaplotypeSupport[candidate_alt].insert(read.hp_tag);
+                    CandidateHaplotypeSupport[candidate_alt].insert(hp);
 
-//                    cout<<"DEL: "<<ref_position<<" "<<ref<<" "<<alt<<" "<<AlleleFrequencyMap[candidate_alt]<<endl;
+//                    cout<<"DEL: "<<ref_position<<" "<<ref<<" "<<alt<<" "<<AlleleFrequencyMap[candidate_alt]<<" "<<hp<<endl;
 
                     if (AlleleMap[region_index].find(candidate_alt) == AlleleMap[region_index].end())
                         AlleleMap[region_index].insert(candidate_alt);
@@ -169,7 +169,7 @@ void CandidateFinder::add_read_alleles(type_read &read, vector<int> &coverage, i
 }
 
 
-vector<int> get_genotype_from_supported_haplotype(set<int> supported_haplotypes) {
+vector<int> get_genotype_from_supported_haplotype(set<int> supported_haplotypes, int alt_size) {
     bool hp1_supported = false;
     bool hp2_supported = false;
     bool un_supported = false;
@@ -186,13 +186,19 @@ vector<int> get_genotype_from_supported_haplotype(set<int> supported_haplotypes)
 
     if(hp1_supported && hp2_supported && !un_supported) {
         // easiest case
-        return {1, 2};
+        if(alt_size == 1) return {1, 1};
+        else if(alt_size == 2) return {1, 2};
+        else return {0, 0};
     }
     else if(hp1_supported && !hp2_supported && !un_supported) {
-        return {0, 1};
+        if(alt_size == 1) return {0, 1};
+        else if(alt_size == 2) return {0, 2};
+        else return {0, 0};
     }
     else if(!hp1_supported && hp2_supported && !un_supported) {
-        return {0, 2};
+        if(alt_size == 1) return {0, 1};
+        else if(alt_size == 2) return {0, 2};
+        else return {0, 0};
     }
     else if(!hp1_supported && !hp2_supported && un_supported) {
         return {1, 1};
@@ -200,8 +206,8 @@ vector<int> get_genotype_from_supported_haplotype(set<int> supported_haplotypes)
     return {0, 0};
 }
 
-vector<PositionalCandidateRecord> CandidateFinder::find_candidates(
-        vector <type_read>& reads) {
+vector<PositionalCandidateRecord> CandidateFinder::find_candidates(vector <type_read>& reads_h1,
+        vector <type_read>& reads_h2) {
 
     map<long long, vector <Candidate> > all_positional_candidates;
     set<long long> filtered_candidate_positions;
@@ -210,8 +216,13 @@ vector<PositionalCandidateRecord> CandidateFinder::find_candidates(
     vector<int> allele_ends(region_end - region_start + 1, 0);
     vector<PositionalCandidateRecord> all_records;
     int read_index = 0;
-    for (auto &read:reads) {
-        add_read_alleles(read, coverage, read_index);
+    for (auto &read:reads_h1) {
+        add_read_alleles(read, coverage, read_index, 1);
+        read_index += 1;
+    }
+    read_index = 0;
+    for (auto &read:reads_h2) {
+        add_read_alleles(read, coverage, read_index, 2);
         read_index += 1;
     }
 
@@ -277,8 +288,7 @@ vector<PositionalCandidateRecord> CandidateFinder::find_candidates(
         }
 
         if (!candidate_found) continue;
-
-        vector<int> gt= get_genotype_from_supported_haplotype(all_supported_haplotypes);
+        vector<int> gt= get_genotype_from_supported_haplotype(all_supported_haplotypes, positional_record.alternate_alleles.size());
         positional_record.set_genotype(gt);
 
         all_records.push_back(positional_record);

@@ -13,7 +13,7 @@ class CandidateFinder:
     def overlap_length_between_ranges(range_a, range_b):
         return max(0, (min(range_a[1], range_b[1]) - max(range_a[0], range_b[0])))
 
-    def find_candidates(self, reads):
+    def find_candidates(self, reads_h1, reads_h2):
         ref_start = max(0, self.region_start - (CandidateFinderOptions.SAFE_BASES * 2))
         ref_end = self.region_end + (CandidateFinderOptions.SAFE_BASES * 2)
 
@@ -29,7 +29,7 @@ class CandidateFinder:
                                                   ref_end)
 
         # find candidates
-        candidate_list = candidate_finder.find_candidates(reads)
+        candidate_list = candidate_finder.find_candidates(reads_h1, reads_h2)
 
         # only return candidates that fall in this region
         filtered_list = []
