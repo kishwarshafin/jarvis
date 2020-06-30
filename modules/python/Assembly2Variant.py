@@ -32,6 +32,7 @@ class GetVariants:
         all_reads_h2 = self.bam_handler_h2.get_reads(self.chromosome_name,
                                                      self.region_start_position,
                                                      self.region_end_position)
+
         filtered_reads_h1 = list()
         filtered_reads_h2 = list()
         # filter reads based on multiple criteria
@@ -45,6 +46,12 @@ class GetVariants:
                 continue
             else:
                 filtered_reads_h1.append(read)
+
+        last_pos_end = -1
+        for read in filtered_reads_h1:
+            if read.pos < last_pos_end:
+                print("OVERLAPPING READS AT: ", read.pos, last_pos_end)
+            last_pos_end = read.pos_end
 
         # filter reads based on multiple criteria
         for read in all_reads_h2:

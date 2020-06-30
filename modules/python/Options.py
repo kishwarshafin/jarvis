@@ -1,6 +1,6 @@
 class ReadFilterOptions(object):
     # base and map quality
-    MIN_MAPQ = 20
+    MIN_MAPQ = 60
     MIN_ALIGNED_LENGTH = 80000
     MIN_READ_LENGTH = 10000
     MIN_ALIGNED_FRACTION = 90

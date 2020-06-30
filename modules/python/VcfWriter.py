@@ -56,9 +56,7 @@ class VCFWriter:
         for sq in bam_sqs:
             id = sq['SN']
             ln = sq['LN']
-            items = [('ID', id),
-                     ('length', ln)]
-            header.add_meta(key='contig', items=items)
+            header.contigs.add(id, length=ln)
 
         header.add_sample(sample_name)
 

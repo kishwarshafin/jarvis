@@ -2,11 +2,12 @@ import argparse
 import os
 import sys
 import concurrent.futures
-from tqdm import tqdm
+import re
 
 from build import JARVIS
+from datetime import datetime
 from modules.python.Assembly2Variant import GetVariants
-from modules.python.TextColor import TextColor
+from modules.python.ExcludeContigs import EXCLUDED_HUMAN_CONTIGS
 from modules.python.PostProcessVariants import PostProcessVariants
 from modules.python.VcfWriter import VCFWriter
 
@@ -99,7 +100,8 @@ def chromosome_level_parallelization2(chr_list,
                                       max_size=100000):
     # if there's no confident bed provided, then chop the chromosome
     fasta_handler = JARVIS.FASTA_handler(ref_file)
-
+    vcf_file = VCFWriter(bam_file_h1, sample_name, output_path)
+    all_variants = []
     for chr_name, region in chr_list:
         if not region:
             interval_start, interval_end = (0, fasta_handler.get_chromosome_sequence_length(chr_name) + 1)
@@ -113,7 +115,7 @@ def chromosome_level_parallelization2(chr_list,
         args = (chr_name, bam_file_h1, bam_file_h2, ref_file)
 
         total_variants = 0
-        all_variants = []
+
         with concurrent.futures.ProcessPoolExecutor(max_workers=total_threads) as executor:
             futures = [executor.submit(single_worker, args,  _start, _stop) for _start, _stop in all_intervals]
 
@@ -121,17 +123,17 @@ def chromosome_level_parallelization2(chr_list,
                 if fut.exception() is None:
                     # get the results
                     n_variants, variants, region = fut.result()
-                    sys.stderr.write(TextColor.GREEN + "TOTAL : " + str(n_variants) + " VARIANTS FOUND IN: " + str(region) + "\n" + TextColor.END)
+                    # sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] " +
+                    #                  "TOTAL : " + str(n_variants) + " VARIANTS FOUND IN: " + str(region) + "\n")
                     total_variants += n_variants
                     all_variants.extend(variants)
                 else:
                     sys.stderr.write("ERROR: " + str(fut.exception()) + "\n")
                 fut._result = None  # python issue 27144
 
-        vcf_file = VCFWriter(bam_file_h1, sample_name, output_path)
-        post_processor = PostProcessVariants()
-        resolved_candidates = post_processor.post_process_variants(all_variants)
-        vcf_file.write_vcf_records(resolved_candidates)
+    post_processor = PostProcessVariants()
+    resolved_candidates = post_processor.post_process_variants(all_variants)
+    vcf_file.write_vcf_records(resolved_candidates)
 
 
 def handle_output_directory(output_dir):
@@ -160,7 +162,66 @@ def boolean_string(s):
     return s.lower() == 'true'
 
 
-def get_chromosme_list(chromosome_names):
+def natural_key(string_):
+    """See http://www.codinghorror.com/blog/archives/001018.html"""
+    return [int(s) if s.isdigit() else s for s in re.split(r'(\d+)', string_)]
+
+
+def get_chromosme_list(chromosome_names, ref_file, bam_file, region_bed):
+    """
+    PARSES THROUGH THE CHROMOSOME PARAMETER TO FIND OUT WHICH REGIONS TO PROCESS
+    :param chromosome_names: NAME OF CHROMOSOME
+    :param ref_file: PATH TO THE REFERENCE FILE
+    :param bam_file: PATH TO BAM FILE
+    :return: LIST OF CHROMOSOME IN REGION SPECIFIC FORMAT
+    """
+    if not chromosome_names and not region_bed:
+        fasta_handler = JARVIS.FASTA_handler(ref_file)
+        bam_handler = JARVIS.BAM_handler(bam_file)
+        bam_contigs = bam_handler.get_chromosome_sequence_names()
+        fasta_contigs = fasta_handler.get_chromosome_names()
+        common_contigs = list(set(fasta_contigs) & set(bam_contigs))
+        common_contigs = list(set(common_contigs) - set(EXCLUDED_HUMAN_CONTIGS))
+
+        if len(common_contigs) == 0:
+            sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] "
+                             + "ERROR: NO COMMON CONTIGS FOUND BETWEEN THE BAM FILE AND THE FASTA FILE.")
+            sys.stderr.flush()
+            exit(1)
+
+        common_contigs = sorted(common_contigs, key=natural_key)
+        sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: COMMON CONTIGS FOUND: " + str(common_contigs) + "\n")
+        sys.stderr.flush()
+
+        chromosome_name_list = []
+        for contig_name in common_contigs:
+            chromosome_name_list.append((contig_name, None))
+
+        return chromosome_name_list
+
+    if region_bed:
+        contig_names = None
+        if chromosome_names:
+            split_names = chromosome_names.strip().split(',')
+            split_names = [name.strip() for name in split_names]
+            contig_names = split_names
+
+        chromosome_name_list = []
+        with open(region_bed) as fp:
+            line = fp.readline()
+            cnt = 1
+            while line:
+                line_to_list = line.rstrip().split('\t')
+                chr_name, start_pos, end_pos = line_to_list[0], int(line_to_list[1]), int(line_to_list[2])
+                region = sorted([start_pos, end_pos])
+                if not contig_names:
+                    chromosome_name_list.append((chr_name, region))
+                elif chr_name in contig_names:
+                    chromosome_name_list.append((chr_name, region))
+                line = fp.readline()
+            cnt += 1
+        return chromosome_name_list
+
     split_names = chromosome_names.strip().split(',')
     split_names = [name.strip() for name in split_names]
 
@@ -172,7 +233,7 @@ def get_chromosme_list(chromosome_names):
             name_region = name.strip().split(':')
 
             if len(name_region) != 2:
-                sys.stderr.print(TextColor.RED + "ERROR: --chromosome_name INVALID value.\n" + TextColor.END)
+                sys.stderr.write("ERROR: --region INVALID value.\n")
                 exit(0)
 
             name, region = tuple(name_region)
@@ -180,7 +241,7 @@ def get_chromosme_list(chromosome_names):
             region = [int(pos) for pos in region]
 
             if len(region) != 2 or not region[0] <= region[1]:
-                sys.stderr.print(TextColor.RED + "ERROR: --chromosome_name INVALID value.\n" + TextColor.END)
+                sys.stderr.write("ERROR: --region INVALID value.\n")
                 exit(0)
 
         range_split = name.split('-')
@@ -230,6 +291,12 @@ if __name__ == '__main__':
         help="Reference corresponding to the BAM file."
     )
     parser.add_argument(
+        "--bed",
+        type=str,
+        required=True,
+        help="BED file containing high-confidence regions of the genome."
+    )
+    parser.add_argument(
         "--chromosome_name",
         type=str,
         help="Desired chromosome number E.g.: 3"
@@ -253,7 +320,8 @@ if __name__ == '__main__':
         help="Prediction file."
     )
     FLAGS, unparsed = parser.parse_known_args()
-    chr_list = get_chromosme_list(FLAGS.chromosome_name)
+    # chromosome_names, ref_file, bam_file, region_bed
+    chr_list = get_chromosme_list(FLAGS.chromosome_name, FLAGS.fasta, FLAGS.bam_h1, FLAGS.bed)
 
     output_dir = handle_output_directory(os.path.abspath(FLAGS.output_dir))
 

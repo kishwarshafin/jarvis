@@ -148,9 +148,6 @@ vector <type_read> BAM_handler::get_reads(string chromosome,
            || read_flags.is_unmapped){
             continue;
         }
-        if(read_flags.is_supplementary) {
-            continue;
-        }
 
         // get query name
         string query_name = bam_get_qname(alignment);

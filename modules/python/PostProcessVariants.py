@@ -188,7 +188,7 @@ class PostProcessVariants:
         sorted_called_variants = self.get_canonical_variants_from_candidates(candidates)
 
         if len(sorted_called_variants) > 0:
-            # sys.stderr.write(TextColor.GREEN + "INFO: SOLVING OVERLAPPING VARIANTS\n" + TextColor.END)
+            sys.stderr.write(TextColor.GREEN + "INFO: SOLVING OVERLAPPING VARIANTS\n" + TextColor.END)
             overlap_solver = OverLappingVariantSolver()
             sorted_resolved_variants = overlap_solver.solve_overlapping_variants(sorted_called_variants)
             return sorted_resolved_variants

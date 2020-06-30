@@ -267,7 +267,9 @@ class OverLappingVariantSolver:
     def solve_overlapping_variants(self, sorted_called_variants):
         grouped_variants = self.group_variants(sorted_called_variants)
         solved_variants = []
+        i = 0
         for group in grouped_variants:
+            i += 1
             for variant in self.solve_variant_group(group):
                 solved_variants.append(variant)
 
