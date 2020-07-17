@@ -81,6 +81,7 @@ PYBIND11_MODULE(JARVIS, m) {
         py::class_<CandidateFinder>(m, "CandidateFinder")
             .def(py::init<const string &, const string &, long long &, long long&, long long&, long long&>())
             .def_readwrite("position_to_read_map", &CandidateFinder::position_to_read_map)
+            .def("find_candidates_haploid", &CandidateFinder::find_candidates_haploid)
             .def("find_candidates", &CandidateFinder::find_candidates);
 
         // data structure for sequence name and their length

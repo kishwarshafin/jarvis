@@ -197,6 +197,7 @@ public:
                     long long ref_end);
     void add_read_alleles(type_read &read, vector<int> &coverage, int read_index, int hp);
     vector<PositionalCandidateRecord> find_candidates(vector<type_read>& reads_h1, vector<type_read>& reads_h2);
+    vector<PositionalCandidateRecord> find_candidates_haploid(vector<type_read>& reads_h1);
     // this is for speed-up, we are going to memorize all position wise read-indicies
     map<long long, set<int> > position_to_read_map;
 };

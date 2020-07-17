@@ -296,3 +296,91 @@ vector<PositionalCandidateRecord> CandidateFinder::find_candidates(vector <type_
 
     return all_records;
 }
+
+
+
+vector<PositionalCandidateRecord> CandidateFinder::find_candidates_haploid(vector <type_read> &reads_h1)
+{
+
+    map<long long, vector <Candidate> > all_positional_candidates;
+    set<long long> filtered_candidate_positions;
+
+    vector<int> coverage(region_end - region_start + 1, 0);
+    vector<int> allele_ends(region_end - region_start + 1, 0);
+    vector<PositionalCandidateRecord> all_records;
+    int read_index = 0;
+    for (auto &read:reads_h1) {
+        add_read_alleles(read, coverage, read_index, 1);
+        read_index += 1;
+    }
+
+    int ref_buffer = region_start - ref_start;
+    // get all the positions that pass the threshold
+    for (long long i = 0; i < coverage.size(); i++) {
+        allele_ends[i] = 1;
+        // first figure out the longest delete
+        for (auto &candidate: AlleleMap[i]) {
+            double freq_can = 0.0;
+            if (coverage[i] > 0)
+                freq_can = 100.0 * ((double) AlleleFrequencyMap[candidate] / (double) coverage[i]);
+
+            if (freq_can >= CandidateFinder_options::freq_threshold &&
+                AlleleFrequencyMap[candidate] >= CandidateFinder_options::min_count_threshold) {
+                if(candidate.allele.alt_type == DELETE_TYPE) {
+                    allele_ends[i] = max(allele_ends[i], (int) candidate.allele.ref.length());
+                }
+            }
+        }
+
+        PositionalCandidateRecord positional_record;
+        positional_record.chromosome_name = this->chromosome_name;
+        positional_record.pos_start = this->region_start + i;
+        positional_record.pos_end = positional_record.pos_start + allele_ends[i];
+        positional_record.depth = coverage[i];
+        positional_record.name = chromosome_name + "_" +
+                                 to_string(positional_record.pos_start) + "_" + to_string(positional_record.pos_end);
+        if(positional_record.pos_end > this->ref_end) {
+            // goes beyond the reference regions skip;
+            continue;
+        }
+        positional_record.ref = reference_sequence.substr(ref_buffer + i, max(1, allele_ends[i]));
+
+        bool candidate_found = false;
+        set<int> all_supported_haplotypes;
+
+        for (auto &candidate: AlleleMap[i]) {
+            int freq_can = 0;
+
+            candidate_found = true;
+            filtered_candidate_positions.insert(i + this->region_start);
+
+            string alt_allele = candidate.allele.alt;
+
+            if(candidate.pos_end < positional_record.pos_end) {
+                int suffix_start = candidate.pos_end - ref_start;
+                int length = positional_record.pos_end - candidate.pos_end;
+                string ref_suffix = reference_sequence.substr(suffix_start, length);
+                alt_allele = alt_allele + ref_suffix;
+            }
+            // allele, depth and frequency
+            positional_record.alternate_alleles.push_back(alt_allele);
+            positional_record.allele_depths.push_back(AlleleFrequencyMap[candidate]);
+            positional_record.allele_frequencies.push_back(((double) AlleleFrequencyMap[candidate] /
+                                                            max(1.0, (double) coverage[i])));
+            positional_record.read_support_alleles.push_back(ReadSupportMap[candidate]);
+
+            // for now we are going to say everything is hom-alt
+            for(auto haplotype: CandidateHaplotypeSupport[candidate]) {
+                all_supported_haplotypes.insert(haplotype);
+            }
+        }
+
+        if (!candidate_found) continue;
+        vector<int> gt= get_genotype_from_supported_haplotype(all_supported_haplotypes, positional_record.alternate_alleles.size());
+        positional_record.set_genotype(gt);
+
+        all_records.push_back(positional_record);
+    }
+
+    return all_records;
+}
