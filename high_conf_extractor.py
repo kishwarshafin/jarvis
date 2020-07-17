@@ -35,10 +35,12 @@ def bedIntersectFasta(bed_filepath, fasta_file, fasta_output_dir, regions):
     sys.stderr.flush()
 
     output_fasta_name = fasta_output_dir + Path(fasta_file).resolve().stem + "_highconf.fasta"
+    output_bed_name = fasta_output_dir + Path(fasta_file).resolve().stem + "_highconf.bed"
 
     fasta_handler = JARVIS.FASTA_handler(fasta_file)
 
     output_fasta = open(output_fasta_name, "w")
+    output_bed = open(output_bed_name, "w")
 
     bed_regions = 0
     with open(bed_filepath) as fp:
@@ -60,6 +62,7 @@ def bedIntersectFasta(bed_filepath, fasta_file, fasta_output_dir, regions):
             if contig_sequence is not None and len(contig_sequence) > 0:
                 output_fasta.write('>' + contig_output_name + "\n")
                 output_fasta.write(contig_sequence+"\n")
+                output_bed.write(contig_name + "\t" + str(start_pos) + "\t" + str(end_pos) + "\n")
 
             bed_regions += 1
 
