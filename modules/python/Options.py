@@ -7,4 +7,4 @@ class ReadFilterOptions(object):
 
 
 class CandidateFinderOptions:
-    SAFE_BASES = 100
+    SAFE_BASES = 20

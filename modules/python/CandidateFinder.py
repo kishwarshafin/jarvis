@@ -40,8 +40,10 @@ class CandidateFinder:
         return filtered_list
 
     def find_candidates_haploid(self, reads_h1):
-        ref_start = max(0, self.region_start - (CandidateFinderOptions.SAFE_BASES * 2))
-        ref_end = self.region_end + (CandidateFinderOptions.SAFE_BASES * 2)
+        contig_length = self.fasta_handler.get_chromosome_sequence_length(self.contig)
+
+        ref_start = max(0, min(contig_length - 1, self.region_start - (CandidateFinderOptions.SAFE_BASES * 2)))
+        ref_end = min(contig_length - 1, self.region_end + (CandidateFinderOptions.SAFE_BASES * 2))
 
         reference_sequence = self.fasta_handler.get_reference_sequence(self.contig,
                                                                        ref_start,
@@ -49,8 +51,8 @@ class CandidateFinder:
         # candidate finder objects
         candidate_finder = JARVIS.CandidateFinder(reference_sequence,
                                                   self.contig,
-                                                  max(0, self.region_start - CandidateFinderOptions.SAFE_BASES),
-                                                  self.region_end + CandidateFinderOptions.SAFE_BASES,
+                                                  self.region_start,
+                                                  self.region_end,
                                                   ref_start,
                                                   ref_end)
 
