@@ -4,7 +4,7 @@ import sys
 from datetime import datetime
 
 
-def linearize_regions(in_bed, contig_file, out_bed):
+def bed_extract_contig(in_bed, contig_file, out_bed):
     output_bed = open(out_bed, "w")
 
     # read file that contains contigs
@@ -66,5 +66,5 @@ if __name__ == '__main__':
     )
     FLAGS, unparsed = parser.parse_known_args()
 
-    linearize_regions(FLAGS.bed, FLAGS.contig_list_file, FLAGS.output_bed)
+    bed_extract_contig(FLAGS.bed, FLAGS.contig_list_file, FLAGS.output_bed)
 
