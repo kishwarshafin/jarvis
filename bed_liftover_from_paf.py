@@ -77,6 +77,7 @@ def list_to_interval(position_list):
 
 def liftOverBed(paf_file, bed_file, output_bed):
     output_bed_file = open(output_bed, "w")
+    ref_output_bed_file = open(output_bed + ".ref_locations", "w")
     bed_regions = 0
     contig_wise_interval_high_conf = defaultdict(IntervalTree)
     bed_contigs = set()
@@ -127,6 +128,7 @@ def liftOverBed(paf_file, bed_file, output_bed):
             print("PROCESSING", q_contig, q_start, q_end, t_contig, t_start, t_end, mq)
             asm_to_ref_pos_map = split_cigar(cigar_string, int(q_start), int(t_start), int(q_end), int(t_end))
             asm_high_conf_positions = []
+            ref_high_conf_positions = []
 
             indx = 0
             while indx < len(asm_to_ref_pos_map):
@@ -148,6 +150,7 @@ def liftOverBed(paf_file, bed_file, output_bed):
                 if interval.begin <= ref_pos <= interval.end:
                     while interval.begin <= ref_pos <= interval.end and indx < len(asm_to_ref_pos_map):
                         asm_high_conf_positions.append(asm_pos)
+                        ref_high_conf_positions.append(ref_pos)
                         indx += 1
                         if indx < len(asm_to_ref_pos_map):
                             asm_pos, ref_pos = asm_to_ref_pos_map[indx]
@@ -160,6 +163,11 @@ def liftOverBed(paf_file, bed_file, output_bed):
                 for start_pos, end_pos in asm_high_conf_intervals:
                     assert start_pos <= end_pos
                     output_bed_file.write(asm_contig + "\t" + str(start_pos) + "\t" + str(end_pos) + "\n")
+
+                ref_high_conf_intervals = list_to_interval(ref_high_conf_positions)
+                for start_pos, end_pos in ref_high_conf_intervals:
+                    assert start_pos <= end_pos
+                    ref_output_bed_file.write(ref_contig + "\t" + str(start_pos) + "\t" + str(end_pos) + "\n")
 
 
 
