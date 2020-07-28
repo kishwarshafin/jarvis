@@ -162,11 +162,15 @@ def liftOverBed(paf_file, bed_file, output_bed):
                 asm_high_conf_intervals = list_to_interval(asm_high_conf_positions)
                 for start_pos, end_pos in asm_high_conf_intervals:
                     assert start_pos <= end_pos
+                    if end_pos - start_pos <= 0:
+                        continue
                     output_bed_file.write(asm_contig + "\t" + str(start_pos) + "\t" + str(end_pos) + "\n")
 
                 ref_high_conf_intervals = list_to_interval(ref_high_conf_positions)
                 for start_pos, end_pos in ref_high_conf_intervals:
                     assert start_pos <= end_pos
+                    if end_pos - start_pos <= 0:
+                        continue
                     ref_output_bed_file.write(ref_contig + "\t" + str(start_pos) + "\t" + str(end_pos) + "\n")
 
 
