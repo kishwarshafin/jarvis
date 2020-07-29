@@ -8,21 +8,21 @@ from pysam import FastaFile
 
 def check_contig_consistency(in_vcf, bed_file, fasta_file):
     # read file that contains contigs
-    bed_contigs = list()
+    bed_contigs = set()
     with open(bed_file) as fp:
         line = fp.readline()
         cnt = 1
         while line:
             line_to_list = line.rstrip().split()
             contig_name = line_to_list[0]
-            bed_contigs.append(contig_name)
+            bed_contigs.add(contig_name)
             line = fp.readline()
         cnt += 1
 
-    bed_contigs = list(bed_contigs)
-
     vcf_file = VariantFile(in_vcf)
-    vcf_contigs = list(vcf_file.header.contigs)
+    vcf_contigs = set()
+    for rec in vcf_file.fetch():
+        vcf_contigs.add(rec.contig)
 
     fasta_file = FastaFile(fasta_file)
     fasta_contigs = fasta_file.references

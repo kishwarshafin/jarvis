@@ -21,10 +21,10 @@ def vcf_hom_to_het(vcf_file, output_vcf):
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: CONTIGS FOUND: " + str(vcf_contigs) + "\n")
     sys.stderr.flush()
 
+    sample_gt = (0, 0)
     for rec in vcf_file.fetch():
         for sample in rec.samples:
-            if rec.samples[sample]['GT'] != (1, 1):
-                print("WARN: NON HOM_ALT REC FOUND", rec)
+            sample_gt = rec.samples[sample]['GT']
 
         valid_rec = True
         for allele in rec.alleles:
@@ -38,10 +38,16 @@ def vcf_hom_to_het(vcf_file, output_vcf):
             # sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: SKIPPING\n")
             # sys.stderr.flush()
             continue
-
-        vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.pos-1,
-                                        stop=rec.stop, id='.', qual=30,
-                                        filter='PASS', alleles=rec.alleles, GT=(0, 1))
+        gt1, gt2 = sample_gt
+        # hom-alt, convert to het
+        if gt1 != 0 and gt1 == gt2:
+            vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.pos-1,
+                                            stop=rec.stop, id='.', qual=30,
+                                            filter='PASS', alleles=rec.alleles, GT=(0, 1))
+        else:
+            vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.pos-1,
+                                            stop=rec.stop, id='.', qual=30,
+                                            filter='PASS', alleles=rec.alleles, GT=sample_gt)
         vcf_out.write(vcf_record)
 
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED" + "\n")
