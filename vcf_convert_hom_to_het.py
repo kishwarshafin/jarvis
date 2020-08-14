@@ -39,11 +39,14 @@ def vcf_hom_to_het(vcf_file, output_vcf):
             # sys.stderr.flush()
             continue
         gt1, gt2 = sample_gt
+        if gt1 > 0 and gt2 > 0 and gt1 != gt2:
+            print("ERROR GT", rec)
+            exit()
         # hom-alt, convert to het
         if gt1 != 0 and gt1 == gt2:
             vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.pos-1,
                                             stop=rec.stop, id='.', qual=30,
-                                            filter='PASS', alleles=rec.alleles, GT=(0, 1))
+                                            filter='PASS', alleles=rec.alleles, GT=(0, gt1))
         else:
             vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.pos-1,
                                             stop=rec.stop, id='.', qual=30,
