@@ -14,10 +14,9 @@ def vcf_merge_vcfs(in_vcf1, in_vcf2, output_vcf):
     merged_records = []
     for rec in vcf1_vcf_file.fetch():
         merged_records.append((rec.contig, rec.pos, rec))
-    print("VCF 1 reading done")
+
     for rec in vcf2_vcf_file.fetch():
         merged_records.append((rec.contig, rec.pos, rec))
-    print("VCF 2 reading done")
     merged_records.sort(key=operator.itemgetter(0, 1))
 
     vcf_out = VariantFile(output_vcf, 'w', header=vcf1_vcf_file.header)
