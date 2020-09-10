@@ -18,17 +18,17 @@ def vcf_merge_vcfs(in_vcf1, in_vcf2, output_vcf):
         merged_records.append((rec.contig, rec.pos, rec))
     merged_records.sort(key=operator.itemgetter(0, 1))
 
-    vcf_out = VariantFile(output_vcf, 'w', header=vcf1_vcf_file.header)
+    vcf_out = VariantFile(output_vcf, 'w', header=vcf2_vcf_file.header)
 
     for cotig, pos, rec in merged_records:
-        gt = None
-        vaf = None
-        for sample in rec.samples:
-            gt = rec.samples[sample]['GT']
-            vaf = rec.samples[sample]['VAF']
-
-        vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.start, stop=rec.stop, id='.', qual=rec.qual, filter='PASS', alleles=rec.alleles, GT=gt, GQ=rec.qual, VAF=vaf)
-        vcf_out.write(vcf_record)
+        # gt = None
+        # vaf = None
+        # for sample in rec.samples:
+        #     gt = rec.samples[sample]['GT']
+        #     vaf = rec.samples[sample]['VAF']
+        #
+        # vcf_record = vcf_out.new_record(contig=str(rec.contig), start=rec.start, stop=rec.stop, id='.', qual=rec.qual, filter='PASS', alleles=rec.alleles, GT=gt, GQ=rec.qual, VAF=vaf)
+        vcf_out.write(rec)
 
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED " + "\n")
     sys.stderr.flush()
