@@ -23,6 +23,7 @@ def vcf_merge_vcfs(in_vcf1, in_vcf2, output_vcf):
     vcf_out = VariantFile(output_vcf, 'w', header=vcf1_vcf_file.header)
 
     for cotig, pos, rec in merged_records:
+        print(rec)
         vcf_out.write(rec)
 
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED " + "\n")
