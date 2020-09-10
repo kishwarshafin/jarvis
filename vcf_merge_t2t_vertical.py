@@ -9,12 +9,11 @@ from collections import defaultdict
 
 def vcf_merge_vcfs(in_vcf1, in_vcf2, output_vcf):
     vcf1_vcf_file = VariantFile(in_vcf1)
-    vcf2_vcf_file = VariantFile(in_vcf2)
-
     merged_records = []
     for rec in vcf1_vcf_file.fetch():
         merged_records.append((rec.contig, rec.pos, rec))
 
+    vcf2_vcf_file = VariantFile(in_vcf2)
     for rec in vcf2_vcf_file.fetch():
         merged_records.append((rec.contig, rec.pos, rec))
     merged_records.sort(key=operator.itemgetter(0, 1))
