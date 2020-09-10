@@ -22,7 +22,17 @@ def vcf_merge_vcfs(in_vcf1, in_vcf2, output_vcf):
 
     for cotig, pos, rec in merged_records:
         print(rec, end='')
-        vcf_out.write(rec)
+        gt = None
+        vaf = None
+        for sample in rec.samples:
+            gt = rec.samples[sample]['GT']
+            vaf = rec.samples[sample]['VAF']
+
+        vcf_record = vcf_out.new_record(contig=str(rec.chromosome_name), start=rec.pos_start, stop=rec.pos_end, id='.', qual=rec.qual, filter='PASS', alleles=rec.alleles, GT=gt, GQ=rec.gq, VAF=vaf)
+        print(vcf_record)
+        exit()
+
+        vcf_out.write(vcf_record)
 
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED " + "\n")
     sys.stderr.flush()
