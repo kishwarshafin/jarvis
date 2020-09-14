@@ -19,6 +19,9 @@ def vcf_hom_to_het(vcf_file):
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: CONTIGS FOUND: " + str(vcf_contigs) + "\n")
     sys.stderr.flush()
 
+    total_hom = 0
+    total_het = 0
+    total_hom_alt = 0
     gts_observed = list()
     gt_stat = defaultdict()
     sample_gt = (0, 0)
@@ -39,6 +42,14 @@ def vcf_hom_to_het(vcf_file):
             sys.stderr.flush()
             continue
         gt1, gt2 = sample_gt
+
+        if gt1 == gt2 and gt1 == 0:
+            total_hom += 1
+        elif gt1 == gt2:
+            total_hom_alt += 1
+        else:
+            total_het += 1
+
         if (gt1, gt2) not in gts_observed:
             gt_stat[(gt1, gt2)] = 1
             gts_observed.append((gt1, gt2))
@@ -49,6 +60,9 @@ def vcf_hom_to_het(vcf_file):
     for gt1, gt2 in gts_observed:
         print("GT: (", gt1, ",", gt2, "):\t", gt_stat[(gt1, gt2)])
 
+    print("TOTAL     HOM (class 0):\t", total_hom)
+    print("TOTAL     HET (class 1):\t", total_het)
+    print("TOTAL HOM-ALT (class 2):\t", total_hom_alt)
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED" + "\n")
     sys.stderr.flush()
 
