@@ -71,7 +71,7 @@ def vcf_hom_to_het(vcf_file):
     print("TOTAL HOM-ALT (class 2):\t", total_hom_alt)
 
     for i in range(1, max_observed_alleles+1):
-        print("RECORDS WITH:\t" + str(i) + "ALTs:\t" + str(allele_dicitionary[i]))
+        print("RECORDS WITH:\t" + str(i) + "\tALTs:\t" + str(allele_dicitionary[i]))
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED" + "\n")
     sys.stderr.flush()
 
