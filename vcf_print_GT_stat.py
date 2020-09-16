@@ -22,6 +22,9 @@ def vcf_hom_to_het(vcf_file):
     total_hom = 0
     total_het = 0
     total_hom_alt = 0
+    allele_dicitionary = defaultdict(int)
+    max_observed_alleles = 0
+
     gts_observed = list()
     gt_stat = defaultdict()
     sample_gt = (0, 0)
@@ -35,6 +38,9 @@ def vcf_hom_to_het(vcf_file):
                 if base not in ['A', 'C', 'G', 'T']:
                     valid_rec = False
                     break
+
+        max_observed_alleles = max(max_observed_alleles, len(rec.alts))
+        allele_dicitionary[len(rec.alts)] += 1
 
         if not valid_rec:
             sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: INVALID BASE IN RECORD: " + str(rec))
@@ -56,13 +62,16 @@ def vcf_hom_to_het(vcf_file):
         else:
             gt_stat[(gt1, gt2)] += 1
 
-    print("OBSERVED GTS:", gts_observed)
+    gts_observed = sorted(gts_observed, key=lambda x: (x[0], x[1]))
     for gt1, gt2 in gts_observed:
         print("GT: (", gt1, ",", gt2, "):\t", gt_stat[(gt1, gt2)])
 
     print("TOTAL     HOM (class 0):\t", total_hom)
     print("TOTAL     HET (class 1):\t", total_het)
     print("TOTAL HOM-ALT (class 2):\t", total_hom_alt)
+
+    for i in range(1, max_observed_alleles+1):
+        print("RECORDS WITH:\t" + str(i) + "ALTs:\t" + str(allele_dicitionary[i]))
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED" + "\n")
     sys.stderr.flush()
 
