@@ -33,8 +33,8 @@ def vcf_hom_to_het(vcf_file):
             sample_gt = rec.samples[sample]['GT']
 
         valid_rec = True
-        if len(rec.alleles) > 3:
-            print(rec, end='')
+        # if len(rec.alleles) > 3:
+        #     print(rec, end='')
         for allele in rec.alleles:
             for base in allele:
                 if base not in ['A', 'C', 'G', 'T']:
