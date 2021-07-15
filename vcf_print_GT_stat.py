@@ -22,6 +22,9 @@ def vcf_hom_to_het(vcf_file):
     total_hom = 0
     total_het = 0
     total_hom_alt = 0
+    total_snps_in_multiallelic = 0
+    total_inserts_in_multiallelic = 0
+    total_deletes_in_multiallelic = 0
 
     total_snps = 0
     total_inserts = 0
@@ -37,12 +40,23 @@ def vcf_hom_to_het(vcf_file):
     gt_stat = defaultdict()
     sample_gt = (0, 0)
     for rec in vcf_file.fetch():
+
         for sample in rec.samples:
             sample_gt = rec.samples[sample]['GT']
 
         valid_rec = True
-        # if len(rec.alleles) > 5:
-        #     print(rec, end='')
+        if len(rec.alleles) > 3:
+            ref_allele = rec.alleles[0]
+            for i, allele in enumerate(rec.alleles):
+                if i == 0:
+                    continue
+                if len(ref_allele) == len(allele):
+                    total_snps_in_multiallelic += 1
+                elif len(ref_allele) > len(allele):
+                    total_deletes_in_multiallelic += 1
+                elif len(ref_allele) < len(allele):
+                    total_inserts_in_multiallelic += 1
+
         ref_allele = rec.alleles[0]
         for i, allele in enumerate(rec.alleles):
 
@@ -100,24 +114,38 @@ def vcf_hom_to_het(vcf_file):
     for gt1, gt2 in gts_observed:
         print("GT: (", gt1, ",", gt2, "):\t", gt_stat[(gt1, gt2)])
 
+    print("######################################")
     print("OVARALL STATISTICS:")
     print("TOTAL     HOM (class 0):\t", total_hom)
     print("TOTAL     HET (class 1):\t", total_het)
     print("TOTAL HOM-ALT (class 2):\t", total_hom_alt)
+    print("######################################")
     print("SNP STATISTICS:")
-    print("TOTAL SNPs:", total_snps)
+    print("TOTAL    SNPs:", total_snps)
     print("TOTAL TP SNPs:", snp_gt_stat[1])
     print("TOTAL FP SNPs:", snp_gt_stat[0])
-    print("TOTAL INSERTs:", total_inserts)
+    print("######################################")
+    print("INSERT STATISTICS:")
+    print("TOTAL    INSERTs:", total_inserts)
     print("TOTAL TP INSERTs:", insert_gt_stat[1])
     print("TOTAL FP INSERTs:", insert_gt_stat[0])
-    print("TOTAL DELETEs:", total_deletes)
+    print("######################################")
+    print("DELETE STATISTICS:")
+    print("TOTAL    DELETEs:", total_deletes)
     print("TOTAL TP DELETEs:", delete_gt_stat[1])
     print("TOTAL FP DELETEs:", delete_gt_stat[0])
+    print("######################################")
     for i in range(1, max_observed_alleles+1):
         print("RECORDS WITH:\t" + str(i) + "\tALTs:\t" + str(allele_dicitionary[i]))
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED" + "\n")
     sys.stderr.flush()
+
+    print("######################################")
+    print("MULTIALLELIC STATISTICS (higer than 3):")
+    print("TOTAL       SNPs:", total_snps_in_multiallelic)
+    print("TOTAL    INSERTs:", total_inserts_in_multiallelic)
+    print("TOTAL    DELETEs:", total_deletes_in_multiallelic)
+    print("######################################")
 
 
 
