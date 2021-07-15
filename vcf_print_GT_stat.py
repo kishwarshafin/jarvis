@@ -22,6 +22,14 @@ def vcf_hom_to_het(vcf_file):
     total_hom = 0
     total_het = 0
     total_hom_alt = 0
+
+    total_snps = 0
+    total_inserts = 0
+    total_deletes = 0
+    snp_gt_stat = [0, 0]
+    insert_gt_stat = [0, 0]
+    delete_gt_stat = [0, 0]
+
     allele_dicitionary = defaultdict(int)
     max_observed_alleles = 0
 
@@ -33,9 +41,33 @@ def vcf_hom_to_het(vcf_file):
             sample_gt = rec.samples[sample]['GT']
 
         valid_rec = True
-        if len(rec.alleles) > 5:
-            print(rec, end='')
-        for allele in rec.alleles:
+        # if len(rec.alleles) > 5:
+        #     print(rec, end='')
+        ref_allele = rec.alleles[0]
+        for i, allele in enumerate(rec.alleles):
+
+            if i == 0:
+                continue
+
+            if len(ref_allele) == len(allele):
+                total_snps += 1
+                if i in sample_gt:
+                    snp_gt_stat[1] += 1
+                else:
+                    snp_gt_stat[0] += 1
+            elif len(ref_allele) > len(allele):
+                total_deletes += 1
+                if i in sample_gt:
+                    delete_gt_stat[1] += 1
+                else:
+                    delete_gt_stat[0] += 1
+            elif len(ref_allele) < len(allele):
+                total_inserts += 1
+                if i in sample_gt:
+                    insert_gt_stat[1] += 1
+                else:
+                    insert_gt_stat[0] += 1
+
             for base in allele:
                 if base not in ['A', 'C', 'G', 'T']:
                     valid_rec = False
@@ -68,10 +100,20 @@ def vcf_hom_to_het(vcf_file):
     for gt1, gt2 in gts_observed:
         print("GT: (", gt1, ",", gt2, "):\t", gt_stat[(gt1, gt2)])
 
+    print("OVARALL STATISTICS:")
     print("TOTAL     HOM (class 0):\t", total_hom)
     print("TOTAL     HET (class 1):\t", total_het)
     print("TOTAL HOM-ALT (class 2):\t", total_hom_alt)
-
+    print("SNP STATISTICS:")
+    print("TOTAL SNPs:", total_snps)
+    print("TOTAL TP SNPs:", snp_gt_stat[1])
+    print("TOTAL FP SNPs:", snp_gt_stat[0])
+    print("TOTAL INSERTs:", total_inserts)
+    print("TOTAL TP INSERTs:", insert_gt_stat[1])
+    print("TOTAL FP INSERTs:", insert_gt_stat[0])
+    print("TOTAL DELETEs:", total_deletes)
+    print("TOTAL TP DELETEs:", delete_gt_stat[1])
+    print("TOTAL FP DELETEs:", delete_gt_stat[0])
     for i in range(1, max_observed_alleles+1):
         print("RECORDS WITH:\t" + str(i) + "\tALTs:\t" + str(allele_dicitionary[i]))
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED" + "\n")
