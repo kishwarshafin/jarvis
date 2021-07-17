@@ -37,9 +37,9 @@ def vcf_print_state(happy_vcf):
                     if len(ref_allele) > len(allele):
                         total_del_fns += 1
                     elif len(ref_allele) < len(allele):
+                        print(rec)
                         total_ins_fns += 1
                     else:
-                        print(rec)
                         total_snp_fns += 1
 
     sys.stderr.write("[" + datetime.now().strftime('%m-%d-%Y %H:%M:%S') + "] INFO: PROCESS FINISHED " + "\n")
